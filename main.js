@@ -10,11 +10,22 @@ class Block
         this.data=data;
         this.previousHash=previousHash;
         this.hash=this.calculateHash();
+        this.nonce=0;//used to implement Proof-of-Work
     }
 
     calculateHash()
     {
-        return SHA256(this.index + this.timestamp + JSON.stringify(this.data)).toString();
+        return SHA256(this.index + this.timestamp + JSON.stringify(this.data)+this.nonce).toString();
+    }
+
+    mineBlock(difficulty)//implementing Proof-of-Work
+    {
+        while(this.hash.substring(0,difficulty)!== Array(difficulty+1).join("0"))
+        {
+            this.nonce++;
+            this.hash=this.calculateHash();
+        }
+        console.log("Block mined ="+this.hash);
     }
 }
 
@@ -23,6 +34,7 @@ class Blockchain
     constructor()
     {
         this.chain=[this.createGenesisBlock()]; 
+        this.difficulty=4;//taking a random difficulty value right now 
     }
 
     createGenesisBlock()
@@ -38,7 +50,7 @@ class Blockchain
     addBlock(newBlock)
     {
         newBlock.previousHash=this.getLatestBlock().hash;
-        newBlock.hash=newBlock.calculateHash();
+        newBlock.mineBlock(this.difficulty);
         this.chain.push(newBlock);
     }
 
@@ -65,15 +77,9 @@ class Blockchain
 }
 //Name of Blockchain and first 3 blocks
 let ObiCoin = new Blockchain();
+
+console.log('Mining block 1...');
 ObiCoin.addBlock(new Block(1, "12/06/2019",{amount: 4}));
+
+console.log('Mining block 2...');
 ObiCoin.addBlock(new Block(2, "12/06/2019",{amount: 20}));
-console.log(JSON.stringify(ObiCoin,null,4));
-/* Testing
-
-ObiCoin.chain[1].data = {amount: 100};
-console.log(`Is chain valid? `+ObiCoin.isChainValid());
-
-ObiCoin.chain[1].hash = ObiCoin.chain[2].calculateHash();
-
-console.log(`Is chain valid? `+ObiCoin.isChainValid());
-*/
