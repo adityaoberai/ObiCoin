@@ -1,13 +1,21 @@
 const SHA256=require('crypto-js/sha256')
 
-
-class Block
+class Transaction//transactions in cryptocurrency
 {
-    constructor(index, timestamp, data, previousHash='')
+    constructor(fromAddress, toAddress, amount)
     {
-        this.index=index;
+        this.fromAddress=fromAddress;
+        this.toAddress=toAddress;
+        this.amount=amount;
+    }
+}
+
+class Block//creation of blocks in blockchain
+{
+    constructor(timestamp, transactions, previousHash='')
+    {
         this.timestamp=timestamp;
-        this.data=data;
+        this.transactions=transactions;
         this.previousHash=previousHash;
         this.hash=this.calculateHash();
         this.nonce=0;//used to implement Proof-of-Work
@@ -15,7 +23,7 @@ class Block
 
     calculateHash()
     {
-        return SHA256(this.index + this.timestamp + JSON.stringify(this.data)+this.nonce).toString();
+        return SHA256(this.timestamp + JSON.stringify(this.transactions)+this.nonce).toString();
     }
 
     mineBlock(difficulty)//implementing Proof-of-Work
@@ -29,17 +37,19 @@ class Block
     }
 }
 
-class Blockchain
+class Blockchain//creation of blockchain
 {
     constructor()
     {
         this.chain=[this.createGenesisBlock()]; 
-        this.difficulty=4;//taking a random difficulty value right now 
+        this.difficulty=1;//taking a random difficulty value right now 
+        this.pendingTransactions=[];
+        this.miningReward=100;//taking random value for miner reward
     }
 
-    createGenesisBlock()
+    createGenesisBlock()//creation of first block
     {
-        return new Block(0,"12/06/2019","Genesis Block","0");
+        return new Block("12/06/2019","Genesis Block","0");
     }
 
     getLatestBlock()
@@ -47,14 +57,50 @@ class Blockchain
         return this.chain[this.chain.length-1];
     }
 
-    addBlock(newBlock)
+    minePendingTransactions(miningRewardAddress)
     {
-        newBlock.previousHash=this.getLatestBlock().hash;
-        newBlock.mineBlock(this.difficulty);
-        this.chain.push(newBlock);
+        let block=new Block(Date.now(), this.pendingTransactions);//not taking in account real payment from miners for mined block right now
+        block.mineBlock(this.difficulty);
+
+        console.log('Block successfully mined');
+        this.chain.push(block);
+
+        this.pendingTransactions=[ 
+            new Transaction(null, miningRewardAddress, this.miningReward)
+        ];//clearing pending transactions
+        
+         //Note: This code can be edited by a user to give himself a larger reward. However an actual cryptocurrency is powered by a P2P network so those changes to code will not be approved.
     }
 
-    isChainValid()
+    createTransaction(transaction)//adding transaction to pending trabsactions
+    {
+        this.pendingTransactions.push(transaction);
+    }
+
+    getBalanceOfAddress(address)//checking balance of particular user
+    {
+        let balance=0;
+
+        for(const block of this.chain)
+        {
+            for(const trans of block.transactions)
+            {
+                if(trans.fromAddress === address)
+                {
+                    balance-=trans.amount;
+                }
+
+                if(trans.toAddress === address)
+                {
+                    balance+=trans.amount;
+                }
+            }
+        }
+
+        return balance;
+    }
+
+    isChainValid()//checking validity of block
     {
         for(let i=1; i<this.chain.length; i++)
         {
@@ -75,11 +121,17 @@ class Blockchain
         }
     }
 }
-//Name of Blockchain and first 3 blocks
+//Name of Cryptocurrency
 let ObiCoin = new Blockchain();
 
-console.log('Mining block 1...');
-ObiCoin.addBlock(new Block(1, "12/06/2019",{amount: 4}));
+//Test cases
+ObiCoin.createTransaction(new Transaction('address1','address2',100));
+ObiCoin.createTransaction(new Transaction('address2','address1',50));
 
-console.log('Mining block 2...');
-ObiCoin.addBlock(new Block(2, "12/06/2019",{amount: 20}));
+console.log('\n Starting the miner...');
+ObiCoin.minePendingTransactions('adi1');
+console.log('Balance of Aditya is', ObiCoin.getBalanceOfAddress('adi1'));
+
+console.log('\n Starting the miner again...');
+ObiCoin.minePendingTransactions('adi1');
+console.log('Balance of Aditya is', ObiCoin.getBalanceOfAddress('adi1'));
